@@ -22,24 +22,29 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
           // Crear lista de participantes
-          let participantsHTML = "";
-          if (details.participants.length > 0) {
-            participantsHTML = `
-              <div class="participants-section">
-                <p class="participants-title"><strong>Participants:</strong></p>
-                <ul class="participants-list">
-                  ${details.participants.map(p => `<li>${p}</li>`).join("")}
-                </ul>
-              </div>
-            `;
-          } else {
-            participantsHTML = `
-              <div class="participants-section">
-                <p class="participants-title"><strong>Participants:</strong></p>
-                <p class="no-participants">No participants yet.</p>
-              </div>
-            `;
-          }
+        let participantsHTML = "";
+        if (details.participants.length > 0) {
+          participantsHTML = `
+            <div class="participants-section">
+              <p class="participants-title"><strong>Participants:</strong></p>
+              <ul class="participants-list no-bullets">
+                ${details.participants.map(p => `
+                  <li>
+                    <span class="participant-email">${p}</span>
+                    <button class="delete-participant" title="Remove participant" data-activity="${name}" data-email="${p}">&#128465;</button>
+                  </li>
+                `).join("")}
+              </ul>
+            </div>
+          `;
+        } else {
+          participantsHTML = `
+            <div class="participants-section">
+              <p class="participants-title"><strong>Participants:</strong></p>
+              <p class="no-participants">No participants yet.</p>
+            </div>
+          `;
+        }
 
           activityCard.innerHTML = `
             <h4>${name}</h4>
@@ -50,6 +55,42 @@ document.addEventListener("DOMContentLoaded", () => {
           `;
 
         activitiesList.appendChild(activityCard);
+
+          // Agregar manejador de eliminación para los participantes
+          setTimeout(() => {
+            const deleteButtons = activityCard.querySelectorAll('.delete-participant');
+            deleteButtons.forEach(btn => {
+              btn.addEventListener('click', async (e) => {
+                const activityName = btn.getAttribute('data-activity');
+                const email = btn.getAttribute('data-email');
+                try {
+                  const response = await fetch(`/activities/${encodeURIComponent(activityName)}/unregister?email=${encodeURIComponent(email)}`, {
+                    method: 'POST',
+                  });
+                  const result = await response.json();
+                  if (response.ok) {
+                    messageDiv.textContent = result.message || 'Participant removed.';
+                    messageDiv.className = 'success';
+                    fetchActivities();
+                  } else {
+                    messageDiv.textContent = result.detail || 'Error removing participant.';
+                    messageDiv.className = 'error';
+                  }
+                  messageDiv.classList.remove('hidden');
+                  setTimeout(() => {
+                    messageDiv.classList.add('hidden');
+                  }, 5000);
+                } catch (error) {
+                  messageDiv.textContent = 'Failed to remove participant.';
+                  messageDiv.className = 'error';
+                  messageDiv.classList.remove('hidden');
+                  setTimeout(() => {
+                    messageDiv.classList.add('hidden');
+                  }, 5000);
+                }
+              });
+            });
+          }, 0);
 
         // Add option to select dropdown
         const option = document.createElement("option");
@@ -84,6 +125,8 @@ document.addEventListener("DOMContentLoaded", () => {
         messageDiv.textContent = result.message;
         messageDiv.className = "success";
         signupForm.reset();
+        // Actualizar actividades para reflejar el nuevo registro
+        fetchActivities();
       } else {
         messageDiv.textContent = result.detail || "An error occurred";
         messageDiv.className = "error";
